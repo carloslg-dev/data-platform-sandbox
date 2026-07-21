@@ -1,0 +1,39 @@
+spring:
+  application:
+    name: data-platform-sandbox
+
+  # Relational Database (PostgreSQL)
+  datasource:
+    url: jdbc:postgresql://localhost:5432/telecom_db
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  # Document Database (MongoDB)
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/telemetry
+
+  # Spring Cloud AWS Config (targeting LocalStack locally)
+  cloud:
+    aws:
+      sqs:
+        endpoint: http://localhost:4566
+      region:
+        static: us-east-1
+      credentials:
+        access-key: noop
+        secret-key: noop
+
+logging:
+  level:
+    root: INFO
+    com.telecom.analytics.platform: DEBUG
+    org.springframework.web: INFO
