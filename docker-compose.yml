@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: data-platform-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=telecom_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - ./src/main/resources/docker/postgres-init/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d telecom_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  mongodb:
+    image: mongo:7.0
+    container_name: data-platform-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./src/main/resources/docker/mongodb-init/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js
+      - mongodb_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  localstack:
+    image: localstack/localstack:3.0
+    container_name: data-platform-localstack
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=sqs
+      - AWS_DEFAULT_REGION=us-east-1
+    volumes:
+      - ./src/main/resources/docker/localstack-init/init-sqs.sh:/etc/localstack/init/ready.d/init-sqs.sh
+      - localstack_data:/var/lib/localstack
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:4566/_localstack/health | grep -q '\"sqs\": \"running\"'"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  trino:
+    image: trinodb/trino:451
+    container_name: data-platform-trino
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./src/main/resources/docker/trino/node.properties:/etc/trino/node.properties:ro
+      - ./src/main/resources/docker/trino/jvm.config:/etc/trino/jvm.config:ro
+      - ./src/main/resources/docker/trino/config.properties:/etc/trino/config.properties:ro
+      - ./src/main/resources/docker/trino/catalog/postgresql.properties:/etc/trino/catalog/postgresql.properties:ro
+      - ./src/main/resources/docker/trino/catalog/mongodb.properties:/etc/trino/catalog/mongodb.properties:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/v1/status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  mongodb_data:
+  localstack_data:
