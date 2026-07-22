@@ -61,6 +61,7 @@ services:
       - ./src/main/resources/docker/trino/config.properties:/etc/trino/config.properties:ro
       - ./src/main/resources/docker/trino/catalog/postgresql.properties:/etc/trino/catalog/postgresql.properties:ro
       - ./src/main/resources/docker/trino/catalog/mongodb.properties:/etc/trino/catalog/mongodb.properties:ro
+      - ./trino-custom-analytics-plugin/target/custom-analytics:/usr/lib/trino/plugin/custom-analytics:ro
     depends_on:
       postgres:
         condition: service_healthy

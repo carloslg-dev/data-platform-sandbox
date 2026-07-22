@@ -32,6 +32,9 @@ spring:
         access-key: noop
         secret-key: noop
 
+server:
+  port: 8081
+
 logging:
   level:
     root: INFO
