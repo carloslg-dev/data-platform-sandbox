@@ -4,4 +4,5 @@ import java.util.List;
 
 public interface CalculateNativeMetricsUseCase {
     double calculateDurationStandardDeviation(List<Long> durations);
+    double calculateDurationMean(List<Long> durations);
 }

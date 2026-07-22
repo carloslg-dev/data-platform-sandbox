@@ -23,9 +23,25 @@ public class NativeAnalyticsService implements CalculateNativeMetricsUseCase {
         // Convert List<Long> to primitive array long[]
         long[] array = durations.stream().mapToLong(Long::longValue).toArray();
 
-        log.info("Calculating standard deviation of {} events durations using native port", array.length);
+        log.info("Calculating standard deviation of {} events durations using native JNI port", array.length);
         double result = nativeAnalyticsPort.calculateStdDev(array);
         log.info("Calculation completed. Standard deviation: {}", result);
+
+        return result;
+    }
+
+    @Override
+    public double calculateDurationMean(List<Long> durations) {
+        if (durations == null || durations.isEmpty()) {
+            return 0.0;
+        }
+
+        // Convert List<Long> to primitive array long[]
+        long[] array = durations.stream().mapToLong(Long::longValue).toArray();
+
+        log.info("Calculating mean of {} events durations using native Project Panama (FFM) port", array.length);
+        double result = nativeAnalyticsPort.calculateMean(array);
+        log.info("Calculation completed. Mean: {}", result);
 
         return result;
     }

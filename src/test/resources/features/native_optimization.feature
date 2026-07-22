@@ -9,3 +9,11 @@ Feature: Performance Optimization via C++ Native Processing
     When a request is made to calculate the standard deviation of event durations
     Then the calculation is offloaded to the C++ native function
     And the result is computed in native memory without triggering JVM Garbage Collection overhead
+
+  Scenario: Calculate aggregate metrics using Java 21 FFM API (Project Panama)
+    Given the Project Panama FFM link is initialized in the JVM
+    And a set of 100,000 telemetry records is loaded in memory
+    When a request is made to calculate the mean of event durations using Panama
+    Then the calculation is offloaded to the C++ native function via FFM API
+    And the result is computed in native memory without triggering JVM Garbage Collection overhead via FFM
+

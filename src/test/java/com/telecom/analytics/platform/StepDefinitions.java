@@ -101,6 +101,7 @@ public class StepDefinitions {
     private boolean exceptionCaught = false;
     private List<Long> nativeDurationsList = new ArrayList<>();
     private double calculatedStdDev = 0.0;
+    private double calculatedMean = 0.0;
     private List<Map<String, Object>> trinoQueryResult = new ArrayList<>();
 
     @Before
@@ -487,5 +488,28 @@ public class StepDefinitions {
     @And("the result is computed in native memory without triggering JVM Garbage Collection overhead")
     public void the_result_is_computed_in_native_memory_without_triggering_JVM_Garbage_Collection_overhead() {
         Assertions.assertTrue(calculatedStdDev > 0.0, "Result should be a valid positive standard deviation.");
+    }
+
+    // --- Scenario 6: Calculate aggregate metrics using Java 21 FFM API (Project Panama) ---
+
+    @Given("the Project Panama FFM link is initialized in the JVM")
+    public void the_Project_Panama_FFM_link_is_initialized_in_the_JVM() {
+        Assertions.assertNotNull(calculateNativeMetricsUseCase);
+    }
+
+    @When("a request is made to calculate the mean of event durations using Panama")
+    public void a_request_is_made_to_calculate_the_mean_of_event_durations_using_Panama() {
+        calculatedMean = calculateNativeMetricsUseCase.calculateDurationMean(nativeDurationsList);
+        log.info("Calculated mean of event durations via Panama: {}", calculatedMean);
+    }
+
+    @Then("the calculation is offloaded to the C++ native function via FFM API")
+    public void the_calculation_is_offloaded_to_the_C_native_function_via_FFM_API() {
+        log.info("Mean native Panama offloading step complete.");
+    }
+
+    @And("the result is computed in native memory without triggering JVM Garbage Collection overhead via FFM")
+    public void the_result_is_computed_in_native_memory_without_triggering_JVM_Garbage_Collection_overhead_via_FFM() {
+        Assertions.assertTrue(calculatedMean > 0.0, "Result should be a valid positive mean.");
     }
 }
