@@ -50,6 +50,82 @@ services:
       timeout: 5s
       retries: 10
 
+  kafka:
+    image: apache/kafka:3.7.0
+    container_name: data-platform-kafka
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092'
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka:9093'
+      KAFKA_LISTENERS: 'PLAINTEXT://:9092,CONTROLLER://:9093,PLAINTEXT_HOST://:29092'
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      KAFKA_LOG_DIRS: '/tmp/kraft-combined-logs'
+      KAFKA_CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  kafka-init:
+    image: apache/kafka:3.7.0
+    container_name: data-platform-kafka-init
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic telemetry.antenna.raw --partitions 3 --replication-factor 1 --config retention.ms=1209600000;
+      /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic telemetry.antenna.alerts --partitions 3 --replication-factor 1;
+      /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic telemetry.antenna.raw.DLT --partitions 3 --replication-factor 1;
+      echo 'Kafka topics initialized.';
+      "
+
+  minio:
+    image: minio/minio:latest
+    container_name: data-platform-minio
+    ports:
+      - "9005:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  minio-init:
+    image: minio/mc:latest
+    container_name: data-platform-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc alias set myminio http://minio:9000 minioadmin minioadmin;
+      /usr/bin/mc mb --ignore-existing myminio/telemetry-lake;
+      /usr/bin/mc anonymous set public myminio/telemetry-lake;
+      echo 'MinIO bucket telemetry-lake created.';
+      exit 0;
+      "
+
   trino:
     image: trinodb/trino:451
     container_name: data-platform-trino
@@ -61,11 +137,14 @@ services:
       - ./src/main/resources/docker/trino/config.properties:/etc/trino/config.properties:ro
       - ./src/main/resources/docker/trino/catalog/postgresql.properties:/etc/trino/catalog/postgresql.properties:ro
       - ./src/main/resources/docker/trino/catalog/mongodb.properties:/etc/trino/catalog/mongodb.properties:ro
+      - ./src/main/resources/docker/trino/catalog/datalake.properties:/etc/trino/catalog/datalake.properties:ro
       - ./trino-custom-analytics-plugin/target/custom-analytics:/usr/lib/trino/plugin/custom-analytics:ro
     depends_on:
       postgres:
         condition: service_healthy
       mongodb:
+        condition: service_healthy
+      minio:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080/v1/status"]
@@ -77,3 +156,6 @@ volumes:
   postgres_data:
   mongodb_data:
   localstack_data:
+  kafka_data:
+  minio_data:
+
