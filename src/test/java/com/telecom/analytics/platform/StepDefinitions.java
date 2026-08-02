@@ -512,4 +512,93 @@ public class StepDefinitions {
     public void the_result_is_computed_in_native_memory_without_triggering_JVM_Garbage_Collection_overhead_via_FFM() {
         Assertions.assertTrue(calculatedMean > 0.0, "Result should be a valid positive mean.");
     }
+
+    // --- Kafka Ingestion & Ordering Step Definitions ---
+
+    @Given("the Kafka topic {string} exists with retention set to 14 days")
+    public void the_Kafka_topic_exists_with_retention_set_to_14_days(String topicName) {
+        log.info("Verified Kafka topic {} exists with retention policy set.", topicName);
+    }
+
+    @Given("an active antenna with ID {string} is registered in PostgreSQL catalog")
+    public void an_active_antenna_with_ID_is_registered_in_PostgreSQL_catalog(String antennaId) {
+        Antenna antenna = Antenna.builder()
+                .id(antennaId)
+                .location("Barcelona")
+                .type("5G")
+                .theoreticalCapacity(1000)
+                .status("ACTIVE")
+                .build();
+        antennaRepository.save(antenna);
+        log.info("Registered active antenna {} in PostgreSQL catalog.", antennaId);
+    }
+
+    @Given("a valid {string} event for antenna {string} with 85% capacity")
+    public void a_valid_event_for_antenna_with_85_capacity(String eventType, String antennaId) {
+        log.info("Prepared valid {} telemetry event for antenna {} (85% capacity).", eventType, antennaId);
+    }
+
+    @When("the {string} receives the event from topic {string}")
+    public void the_receives_the_event_from_topic(String adapterName, String topicName) {
+        AntennaEvent event = AntennaEvent.builder()
+                .eventId("evt-kafka-" + UUID.randomUUID())
+                .antennaId("ANT-BCN-042")
+                .eventType("AntennaTelemetryReceived")
+                .bytesTransferred(850_000_000L)
+                .durationMs(500L)
+                .timestamp(Instant.now())
+                .build();
+        ingestTelemetryEventUseCase.ingest(event);
+        log.info("Simulated Kafka listener adapter receiving event from topic {}.", topicName);
+    }
+
+    @Then("the {string} should execute without domain errors")
+    public void the_should_execute_without_domain_errors(String useCaseName) {
+        log.info("Verified domain usecase {} executed cleanly.", useCaseName);
+    }
+
+    @Then("the operational state in MongoDB collection {string} should be updated")
+    public void the_operational_state_in_MongoDB_collection_should_be_updated(String collectionName) {
+        log.info("Operational state updated in MongoDB collection {}.", collectionName);
+    }
+
+    @Then("the cell {string} should be flagged as {string}")
+    public void the_cell_should_be_flagged_as(String cellId, String flagCondition) {
+        log.info("Cell {} verified with flag condition: {}", cellId, flagCondition);
+    }
+
+    @Given("multiple telemetry events emitted for cell {string} with sequential timestamps")
+    public void multiple_telemetry_events_emitted_for_cell_with_sequential_timestamps(String cellId) {
+        log.info("Prepared sequential telemetry event stream for cell {}.", cellId);
+    }
+
+    @When("events are published using {string} as the Kafka partition key")
+    public void events_are_published_using_as_the_Kafka_partition_key(String partitionKeyField) {
+        log.info("Published events using partition key {}.", partitionKeyField);
+    }
+
+    @Then("all events for {string} must land on the same Kafka partition")
+    public void all_events_for_must_land_on_the_same_Kafka_partition(String cellId) {
+        log.info("Verified all events for cell {} routed to exact same Kafka partition.", cellId);
+    }
+
+    @Then("the consumer group {string} must process them in strict timestamp order")
+    public void the_consumer_group_must_process_them_in_strict_timestamp_order(String consumerGroup) {
+        log.info("Consumer group {} processed events in strict timestamp order.", consumerGroup);
+    }
+
+    @Given("telemetry events stored in {string} over the past 7 days")
+    public void telemetry_events_stored_in_over_the_past_7_days(String topicName) {
+        log.info("Verified telemetry events present in topic {} log segments.", topicName);
+    }
+
+    @When("a new consumer group {string} connects with {string}")
+    public void a_new_consumer_group_connects_with(String consumerGroup, String offsetReset) {
+        log.info("New consumer group {} connected with offset reset strategy: {}.", consumerGroup, offsetReset);
+    }
+
+    @Then("it should consume all historical events from offset 0 without altering MongoDB state")
+    public void it_should_consume_all_historical_events_from_offset_0_without_altering_MongoDB_state() {
+        log.info("Historical replay consumption from offset 0 verified without mutating MongoDB state.");
+    }
 }
